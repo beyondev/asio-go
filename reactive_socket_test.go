@@ -8,21 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNet_Accept(t *testing.T) {
-	listen, _ := net.Listen("tcp", "127.0.0.1:8888")
-	for ;; {
-		con, _ := listen.Accept()
-
-		fmt.Println(con.RemoteAddr().String())
-
-		buf := make([]byte, 10)
-		con.Read(buf)
-		fmt.Println(string(buf))
-	}
-
-}
-
-
 func TestReactiveSocket_AsyncAccept(t *testing.T) {
 	ioc := NewIoContext()
 	socket := NewReactiveSocket(ioc)
