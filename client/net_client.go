@@ -36,7 +36,7 @@ func main() {
 func close() {
 	stop = true
 	time.Sleep(time.Second)
-	for i:=0; i<=index && i<COUNT; i++ {
+	for i:=0; connList[i] != nil; i++ {
 		connList[i].Close()
 	}
 }

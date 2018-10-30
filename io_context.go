@@ -26,5 +26,6 @@ type ReactorService interface {
 	run()
 	stop()
 	post(op interface{}, args ...interface{})
+	notify(op interface{}, args ...interface{})
 }
 

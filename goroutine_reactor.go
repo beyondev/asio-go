@@ -5,9 +5,9 @@ import (
 	)
 
 type GoroutineReactor struct {
-	opq 	 chan operation
-	//notifies chan os.Signal
-	down chan struct{}
+	opQueue  chan operation
+	sigQueue chan operation
+	down 	 chan struct{}
 }
 
 type operation struct {
@@ -17,7 +17,8 @@ type operation struct {
 
 func NewGoroutineReactor() *GoroutineReactor {
 	r := new(GoroutineReactor)
-	r.opq = make(chan operation, 128)
+	r.opQueue = make(chan operation, 128)
+	r.sigQueue = make(chan operation, 1)
 	r.down = make(chan struct{}, 1)
 	//r.notifies = make(chan os.Signal, 1)
 	return r
@@ -36,9 +37,12 @@ func (g *GoroutineReactor) run() {
 		select {
 		case <-g.down:
 			return
-		case op := <-g.opq:
+
+		case sig := <-g.sigQueue:
+			g.doReactor(sig.function, sig.argument)
+
+		case op := <-g.opQueue:
 			g.doReactor(op.function, op.argument)
-			break
 		}
 	}
 }
@@ -48,12 +52,12 @@ func (g *GoroutineReactor) stop() {
 }
 
 func (g *GoroutineReactor) post(op interface{}, args ...interface{}) {
-	g.opq <- operation{op, args}
+	g.opQueue <- operation{op, args}
 }
 
-//func (g *GoroutineReactor) notify(sig ...os.Signal) {
-	//signal.Notify(g.notifies, sig...)
-//}
+func (g *GoroutineReactor) notify(op interface{}, args ...interface{}) {
+	g.sigQueue <- operation{op, args}
+}
 
 func (g *GoroutineReactor) doReactor(op interface{}, args []interface{}) {
 	opv := reflect.ValueOf(op)
