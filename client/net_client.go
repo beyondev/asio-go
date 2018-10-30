@@ -2,44 +2,64 @@ package main
 
 import (
 	"net"
-	"fmt"
+					"syscall"
+	"github.com/eosspark/eos-go/plugins/appbase/asio"
 	"time"
-	"os"
-	"os/signal"
-	"syscall"
-	)
+	"io"
+	"fmt"
+)
+
+const COUNT = 10000
+
+var (
+	connList = make([]net.Conn, COUNT)
+	iosv = asio.NewIoContext()
+	as = asio.NewReactiveSocket(iosv)
+	index = 0
+	stop = false
+)
 
 func main() {
-	for i:=0; i<100; i++ {
-		go doDial()
-	}
+	go doDial()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT)
-	select {
-	case <- c:
-		return
+	sigset := asio.NewSignalSet(iosv, syscall.SIGINT)
+	sigset.AsyncWait(func(err error) {
+		iosv.Stop()
+		sigset.Cancel()
+	})
+
+	iosv.Run()
+
+	close()
+}
+
+func close() {
+	stop = true
+	time.Sleep(time.Second)
+	for i:=0; i<=index && i<COUNT; i++ {
+		connList[i].Close()
 	}
 }
 
 func doDial() {
-	conn, err := net.Dial("tcp", ":8888")
-	if err != nil {
-		fmt.Println("Error net dial", err)
-		return
-	}
-
-	defer conn.Close()
-
-	for ;; {
-		time.Sleep(time.Second)
-
-
-		_, werr := conn.Write([]byte("hello: " + conn.LocalAddr().String()))
-
-		if werr != nil {
-			fmt.Println("Error write", werr)
+	for i:=0; i<COUNT && !stop; i++ {
+		conn, err := net.Dial("tcp", ":8888")
+		if err != nil {
+			fmt.Println("Error net dial", err)
 			return
 		}
+
+		connList[index] = conn
+		index ++
+
+		go doWrite(conn)
+	}
+}
+
+func doWrite(conn io.Writer) {
+	time.Sleep(time.Second)
+	conn.Write([]byte("hello"))
+	if !stop {
+		doWrite(conn)
 	}
 }

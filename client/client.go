@@ -31,7 +31,7 @@ func main() {
 	startAcceptLoop(socket, listen)
 
 	sigintSet := asio.NewSignalSet(iosv, syscall.SIGINT)
-	sigintSet.AsyncWait(func(ec asio.ErrorCode) {
+	sigintSet.AsyncWait(func(ec error) {
 		iosv.Stop()
 		sigintSet.Cancel()
 	})
@@ -48,12 +48,20 @@ func shutdown() {
 }
 
 func startAcceptLoop(socket *asio.ReactiveSocket, listen net.Listener) {
-	socket.AsyncAccept(listen, func(conn net.Conn, ec asio.ErrorCode) {
+	socket.AsyncAccept(listen, func(conn net.Conn, err error) {
 		//defer conn.Close()
 
-		if ec.Valid {
+		if conn == nil {
+			fmt.Println("Error connect, nil")
+			startAcceptLoop(socket, listen)
+			return
+		}
+
+		if err != nil {
 			conn.Close()
-			fmt.Println("Error connect", ec.Error)
+			fmt.Println("Error connect", err)
+			startAcceptLoop(socket, listen)
+			return
 		}
 
 		fmt.Println(conn.RemoteAddr().String())
@@ -73,14 +81,16 @@ func startAcceptLoop(socket *asio.ReactiveSocket, listen net.Listener) {
 func scheduleLoop1(timer *asio.DeadlineTimer) {
 	timer.Cancel()
 	timer.ExpiresAt(time.Now().Add(time.Second))
-	timer.AsyncWait(func(ec asio.ErrorCode) {
-		if !ec.Valid {
-			fmt.Println("loop 1", time.Now())
-			// do something ...
-			for i:=0; i<3; i++ {
-				fmt.Println("do operation", i)
-				time.Sleep(time.Second)
-			}
+	timer.AsyncWait(func(err error) {
+		if err != nil {
+			scheduleLoop1(timer)
+			return
+		}
+		fmt.Println("loop 1", time.Now())
+		// do something ...
+		for i:=0; i<3; i++ {
+			fmt.Println("do operation", i)
+			time.Sleep(time.Second)
 		}
 		scheduleLoop1(timer)
 	})
@@ -89,19 +99,20 @@ func scheduleLoop1(timer *asio.DeadlineTimer) {
 func scheduleLoop2(timer *asio.DeadlineTimer) {
 	timer.Cancel()
 	timer.ExpiresAt(time.Now().Add(time.Millisecond * 500))
-	timer.AsyncWait(func(ec asio.ErrorCode) {
-		if !ec.Valid {
-			fmt.Println("loop 2", time.Now())
-			// do something ...
+	timer.AsyncWait(func(err error) {
+		if err != nil {
+			scheduleLoop2(timer)
+			return
 		}
+		fmt.Println("loop 2", time.Now())
 		scheduleLoop2(timer)
 	})
 }
 
 func startRead(socket *asio.ReactiveSocket, conn net.Conn) {
 	buf := make([]byte, 64)
-	socket.AsyncRead(conn, buf, func(n int, ec asio.ErrorCode) {
-		if ec.Valid {
+	socket.AsyncRead(conn, buf, func(n int, err error) {
+		if err != nil {
 			// fmt.Println("Error read", ec.Error)
 			conn.Close()
 			return
@@ -109,8 +120,8 @@ func startRead(socket *asio.ReactiveSocket, conn net.Conn) {
 		if n > 0 {
 			msg := string(buf[:n])
 			fmt.Println(msg)
-			socket.AsyncWrite(conn, []byte("hi"), func(n int, ec asio.ErrorCode) {
-				if ec.Valid {
+			socket.AsyncWrite(conn, []byte("hi"), func(n int, err error) {
+				if err != nil {
 					conn.Close()
 				}
 			})

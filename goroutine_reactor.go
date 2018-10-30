@@ -23,6 +23,14 @@ func NewGoroutineReactor() *GoroutineReactor {
 	return r
 }
 
+// use GoroutineReactor for each operating system
+func (i *IoContext) GetService () ReactorService {
+	if i.service == nil {
+		i.service = NewGoroutineReactor()
+	}
+	return i.service
+}
+
 func (g *GoroutineReactor) run() {
 	for ;; {
 		select {
@@ -51,6 +59,10 @@ func (g *GoroutineReactor) doReactor(op interface{}, args []interface{}) {
 	opv := reflect.ValueOf(op)
 	opt := reflect.TypeOf(op)
 
+	if opt == nil {
+		println("invalid operation <nil>")
+	}
+
 	if opt.Kind() != reflect.Func {
 		println("op must be a callback function")
 		return
@@ -65,16 +77,20 @@ func (g *GoroutineReactor) doReactor(op interface{}, args []interface{}) {
 	opArgs := make([]reflect.Value, opNum)
 
 	for i:=0; i<opt.NumIn(); i++ {
-		argt := reflect.TypeOf(args[i])
-		int := opt.In(i)
+		if args[i] == nil {
+			opArgs[i] = reflect.Zero(opt.In(i))
+			continue
+		}
 
-		if !argt.AssignableTo(int) {
+		if !reflect.TypeOf(args[i]).AssignableTo(opt.In(i)) {
 			println("invalid arguments", "wrong args#", i)
 			return
 		}
 
 		opArgs[i] = reflect.ValueOf(args[i])
 	}
+
+	//fmt.Println("args", opArgs)
 
 	opv.Call(opArgs)
 }
