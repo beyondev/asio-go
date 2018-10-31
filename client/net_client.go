@@ -2,7 +2,7 @@ package main
 
 import (
 	"net"
-					"syscall"
+	"syscall"
 	"github.com/eosspark/eos-go/plugins/appbase/asio"
 	"time"
 	"io"
@@ -13,10 +13,10 @@ const COUNT = 10000
 
 var (
 	connList = make([]net.Conn, COUNT)
-	iosv = asio.NewIoContext()
-	as = asio.NewReactiveSocket(iosv)
-	index = 0
-	stop = false
+	iosv     = asio.NewIoContext()
+	as       = asio.NewReactiveSocket(iosv)
+	index    = 0
+	stop     = false
 )
 
 func main() {
@@ -36,13 +36,13 @@ func main() {
 func close() {
 	stop = true
 	time.Sleep(time.Second)
-	for i:=0; connList[i] != nil; i++ {
+	for i := 0; i < COUNT && connList[i] != nil; i++ {
 		connList[i].Close()
 	}
 }
 
 func doDial() {
-	for i:=0; i<COUNT && !stop; i++ {
+	for i := 0; i < COUNT && !stop; i++ {
 		conn, err := net.Dial("tcp", ":8888")
 		if err != nil {
 			fmt.Println("Error net dial", err)

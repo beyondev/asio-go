@@ -42,6 +42,7 @@ func main() {
 }
 
 func shutdown() {
+	fmt.Println("ioc stopped")
 	for _,c := range connects {
 		c.Close()
 	}
