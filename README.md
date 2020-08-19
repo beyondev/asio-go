@@ -1,2 +1,2 @@
 # asio-go
-asio library for golang
+Deprecated library，use https://github.com/Beyond-simplechain/foundation instead
